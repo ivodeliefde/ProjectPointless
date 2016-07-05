@@ -1,0 +1,85 @@
+<!doctype html>
+	<head>
+		<meta charset=utf-8> 
+		<title>Pointless Converter</title> 
+		<link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+		<!-- Bootstrap Core CSS -->
+    	<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+
+    	<!-- Page layout styling -->
+    	<link href="{{ url_for('static', filename='css/PointlessStyle.css') }}" rel="stylesheet">
+	</head>
+	<body>
+		<div class="container-fluid" id="content">
+  			
+			<div class="row">
+				<div class="col-md-2">
+					<!-- empty side bar -->
+				</div>
+				<div class="col-md-2">
+					<div class="row">
+
+						<br><br><h1>Pointless Converter</h1><br><br>
+
+					</div>
+					<div class="row">
+
+						<form action="/ConvertLas/" method="POST" enctype="multipart/form-data">
+						  	<div class="form-group">
+						    	<label for="InputLASfile">File input</label>
+						    	<input type="file" name="InputFile">
+						    	<p class="help-block">Please select a .las file</p>
+						  	</div>
+						  	<div class="form-group">
+						    	<label for="InputDBMSname">Database name</label>
+						    	<input type="text" class="form-control" name="InputDBMSname" placeholder="Database">
+						    	<p class="help-block">Please select name for the output database in PostgreSQL</p>
+						  	</div>
+						  	<div class="form-group">
+						    	<label for="InputUsername">Username</label>
+						    	<input type="text" class="form-control" name="InputUsername" placeholder="Username">
+						  	</div>
+						  	<div class="form-group">
+						    	<label for="InputPassword">Password</label>
+						    	<input type="password" class="form-control" name="InputPassword" placeholder="Password">
+						    	<p class="help-block">Please enter your username and password for PostgreSQL</p>
+						  	</div>
+						  	<div class="form-group">
+						  		<label for="InputDepth">Octree depth</label>
+						    	<select class="form-control" name="InputDepth">
+								  	<option>8</option>
+								  	<option>7</option>
+								  	<option>6</option>
+								  	<option>5</option>
+								</select>
+								<p class="help-block">Please select the maximum depth of the octree</p>
+						  	</div>
+						  	<button onclick="loading()" id="submit" type="submit" class="btn btn-default">Submit</button>
+						</form>
+					</div>
+				</div>
+				<div class="col-md-8">
+					<!-- empty side bar -->
+				</div>
+			</div>
+		</div>
+		<div id="loadingGIF"></div>
+		<div id="loading"></div>
+		<script type="text/javascript">
+			window.onload=function(){
+				$("div#loading").hide()
+				$("div#loadingGIF").hide()
+			};
+
+			function loading() {
+				$("div#loadingGIF").fadeIn("fast");    
+				$("div#loading").fadeIn("fast");         
+		    }       
+		</script>
+		<!-- jQuery -->
+	    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+	    <!-- Bootstrap Core JavaScript -->
+	    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+	</body>
+</html>

@@ -1,0 +1,36 @@
+body {
+	height: 100vh;
+	width: 100vw;
+	background-image: url("../img/lightbulbCompressed.jpg");
+    background-repeat:no-repeat;
+    background-size: cover;
+    background-position: center center;
+}
+
+form, #flash {
+	background-color: #F2F2F2;
+	padding: 10px;
+	border-radius: 1em;
+}
+ 
+div#loadingGIF {
+    top: 0px;
+    left: 0px;
+    position: fixed;
+    z-index: 1500;
+    width: 100vw;
+    height: 100vh;
+    background: url("../img/ajax-loader.gif") no-repeat;
+    background-position: center center;
+}
+
+div#loading {
+    top: 0px;
+    left: 0px;
+    position: fixed;
+    z-index: 1000;
+    width: 100vw;
+    height: 100vh;
+    opacity: 0.8;
+    background-color: white;
+}

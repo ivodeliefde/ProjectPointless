@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Pointless - Point Cloud Walkthrough </title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A viewer that enables users to realistically walk throuh a point cloud.">
+    <meta name="author" content="Proj_Pointless">
+
+
+    <script type="text/javascript" src="{{ url_for('static', filename='js/three.js') }}"></script>
+
+    <!-- First person controls with mouse and arrows -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/FirstPersonControls.js') }}"></script>
+
+    <!-- Bootstrap Core CSS -->
+     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+            color: black;
+        }
+
+        h1 {
+            color: white;
+        }
+
+        a, a:hover {
+            text-decoration: none;
+            color: black;
+        }
+
+        th, td {
+            padding-left: 15px;
+        }
+
+        #WebGL-output{
+        	/*margin-top: 10vh;*/
+        }
+
+
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <h1>Pointless.</h1>
+            </div>
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                    <a href="#" data-toggle="modal" data-html="true" data-target="#helpControls"> Click for help</a>
+                    </li>
+                    <li>
+                        <a href="http://projectpointless.bitballoon.com" target="_blank">More info</a>
+                    </li>
+                    <li>
+                        <a href="https://twitter.com/ProjPointless" target="_blank">Twitter</a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="Points">Load point cloud</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="LoadX">Slice dataset x</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="LoadZ">Slice dataset y</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="LoadY">Slic dataset z</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="Pause">Pause loop</div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <div id="Path">Get path</div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+    <!-- Modal -->
+    <div id="helpControls" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Controls</h4>
+          </div>
+          <div class="modal-body">
+            <table>
+                <tr><td>Look up</td><td> drag mouse up</td></tr>
+                <tr><td>Look down</td><td> drag mouse down</td></tr>
+                <tr><td>Move up</td><td> press R</td></tr>
+                <tr><td>Move down</td><td> press F</td></tr>
+                <tr><td>Look left</td><td> drag mouse left</td></tr>
+                <tr><td>Look right</td><td> drag mouse right</td></tr>
+                <tr><td>Move left</td><td> left arrow or press A</td></tr>
+                <tr><td>Move right</td><td> right arrow or press D</td></tr>
+                <tr><td>Move forwards</td><td> arrow up or press W</td></tr>
+                <tr><td>Move backwards</td><td> arrow down or press S</td></tr>
+                <tr><td>Pause </td><td>  press Q</td></tr>
+            </table>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+<!-- Div which will hold the Output // Like a canvas more or less -->
+<div id="WebGL-output">
+</div>
+
+    <script type=text/javascript>
+        $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
+
+    <!-- Javascript code that runs our Three.js examples -->
+    <script type="text/javascript">
+
+        // once everything is loaded, we run our Three.js stuff.
+        function init() {
+            var Pschychedelic = false;
+            var path = false;
+            var clock = new THREE.Clock();
+            var objects = [];
+
+            // create a scene, that will hold all our elements such as objects, cameras and lights.
+            var scene = new THREE.Scene();
+
+            // create a camera, which defines where we're looking at.
+            var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            // create a render and set the size
+            var webGLRenderer = new THREE.WebGLRenderer();
+            webGLRenderer.setClearColor(new THREE.Color(0x000, 1.0));
+            webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+            webGLRenderer.shadowMapEnabled = true;
+            webGLRenderer.shadowMapType = THREE.PCFSoftShadowMap;
+
+            // position and point the camera to the center of the scene
+            camera.position.x = -400;
+            camera.position.y = 200;
+            camera.lookAt(new THREE.Vector3(0,0,0));
+            var camControls = new THREE.FirstPersonControls(camera);
+            camControls.lookSpeed = 0.4;
+            camControls.movementSpeed = 20;
+            camControls.noFly = true;
+            camControls.lookVertical = true;
+            camControls.constrainVertical = true;
+            camControls.verticalMin = 0.0;
+            camControls.verticalMax = 2.5;
+            camControls.lon = -150;
+            camControls.lat = 120;
+
+
+
+            // Creating a plane that functions as the ground
+            var groundMaterial = new THREE.MeshLambertMaterial({
+                color: 0x6C6C6C
+            });
+            plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(3333,3333), groundMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.x = 128;
+            plane.position.z = 128;
+            plane.position.y = -1;
+            plane.receiveShadow = false;
+
+            scene.add(plane);
+            objects.push(plane);
+
+
+            // lights
+            var ambientLight = new THREE.AmbientLight(0x383838);
+            scene.add(ambientLight);
+            var light = new THREE.DirectionalLight(0xffffff, 1);
+            light.castShadow = true;
+            light.position.set(0, 100, 100);
+            scene.add(light);
+
+
+            // initialize object to perform world/screen calculations
+            projector = new THREE.Projector();
+
+            function onMouseDown( event ) {
+            	mouseX = event.clientX + document.body.scrollLeft;
+   				mouseY = event.clientY + document.body.scrollTop;
+   				// console.log(mouseY);
+            }
+
+            // add the output of the renderer to the html element
+            document.getElementById("WebGL-output").appendChild(webGLRenderer.domElement);
+
+            // Make an AJAX request to the FLASK back end
+            $(document).ready(function() {
+                var GetEmptySpace = new Worker("{{ url_for('static', filename='js/callDB_empty.js') }}");
+                var GetPointCloud = new Worker("{{ url_for('static', filename='js/callDB_points.js') }}");
+                var GetPath = new Worker("{{ url_for('static', filename='js/getPath.js') }}");
+                var GetPoints = new Worker("{{ url_for('static', filename='js/getPoints.js') }}");
+
+                var BBOX = new THREE.Object3D();
+                var origin = new THREE.Vector3( 0,0,0 );
+                var Xmax = new THREE.Vector3( 256,0,0 );
+                var Ymax = new THREE.Vector3( 0,256,0 );
+                var Zmax = new THREE.Vector3( 0,0,256 );
+                var XYZmax = new THREE.Vector3( 256,256,256 );
+                var XYmax = new THREE.Vector3( 256,256,0 );
+                var XZmax = new THREE.Vector3( 256,0,256 );
+                var YZmax = new THREE.Vector3( 0,256,256 );
+
+                var one = new THREE.Geometry();
+                one.vertices.push(origin);
+                one.vertices.push(Xmax);
+                one.vertices.push(XZmax);
+                one.vertices.push(Zmax);
+                one.vertices.push(origin);
+                var two = new THREE.Geometry();
+                two.vertices.push(Ymax);
+                two.vertices.push(XYmax);
+                two.vertices.push(XYZmax);
+                two.vertices.push(YZmax);
+                two.vertices.push(Ymax);
+                var three = new THREE.Geometry();
+                three.vertices.push(Zmax);
+                three.vertices.push(YZmax);
+                var four = new THREE.Geometry();
+                four.vertices.push(Xmax);
+                four.vertices.push(XYmax);
+                var five = new THREE.Geometry();
+                five.vertices.push(XZmax);
+                five.vertices.push(XYZmax);
+                var six = new THREE.Geometry();
+                six.vertices.push(origin);
+                six.vertices.push(Ymax);
+                var lines = [one, two, three, four, five, six];
+                var lineMaterial = new THREE.LineBasicMaterial({color: 0xffffff});
+                for (i = 0; i < lines.length; i++){
+                    mesh = new THREE.Line(lines[i], lineMaterial);
+                    BBOX.add(mesh);
+                }
+
+                scene.add(BBOX)
+
+                group = new THREE.Object3D(); //create an empty container
+                // group.name = "group";
+                scene.add( group );
+
+                var pause = false;
+                $("#Pause").on("click", function(){
+                    if (pause) {
+                        pause = false;
+                        console.log("Continue!");
+                        timer = setTimeout(callWorkers, 10000);
+                    } else {
+                        pause = true;
+                        console.log("Pause!");
+                    }
+                });
+
+                $("#Path").on("click", function(){
+                    GetPath.postMessage({'cmd': 'start'});
+                });
+
+                $("#Points").on("click", function(){
+                    GetPoints.postMessage({'cmd': 'start'});
+                });
+
+                var timer
+                function callWorkers(){
+                    // console.log("remove "+ group.children.length.toString() +" children");
+                    for( var i = group.children.length - 1; i >= 0; i--) {
+                        obj = group.children[i];
+                        group.remove(obj);
+                    }
+
+                    
+                    GetEmptySpace.postMessage({'cmd': 'start', 'dim': window.dimension});
+                    GetPointCloud.postMessage({'cmd': 'start', 'dim': window.dimension});
+                    if (window.dimension === 'x') {
+                        if (SliceLine.position.z < 256) {
+                            SliceLine.position.z += 5;
+                            if (pause == false){
+                                timer = setTimeout(callWorkers, 10000);
+                            }
+                        }
+                    } else if (window.dimension === 'y') {
+                        if (SliceLine.position.x < 256) {
+                            SliceLine.position.x += 5;
+                            if (pause == false){
+                                timer = setTimeout(callWorkers, 10000);
+                            }
+                        }
+                    } else if (window.dimension === 'z') {
+                        if (SliceLine.position.y < 256) {
+                            SliceLine.position.y += 5;
+                            if (pause == false){
+                                timer = setTimeout(callWorkers, 10000);
+                            }
+                        }
+                    }                    
+                }
+                
+
+                var sliceMaterial = new THREE.LineBasicMaterial({color: 0x000000});
+                $("#LoadX").on('click', function(){
+                    window.dimension = 'x';
+                    var slice = new THREE.Geometry();
+                    slice.vertices.push(origin);
+                    slice.vertices.push(Xmax);
+                    slice.vertices.push(XYmax);
+                    slice.vertices.push(Ymax);
+                    slice.vertices.push(origin);
+                    SliceLine = new THREE.Line(slice, sliceMaterial);
+                    SliceLine.position.z -= 5;
+                    scene.add(SliceLine);
+
+                    callWorkers();
+
+                });
+                $("#LoadY").on('click', function(){
+                    window.dimension = 'z';
+                    var slice = new THREE.Geometry();
+                    slice.vertices.push(origin);
+                    slice.vertices.push(Xmax);
+                    slice.vertices.push(XZmax);
+                    slice.vertices.push(Zmax);
+                    slice.vertices.push(origin);
+                    SliceLine = new THREE.Line(slice, sliceMaterial);
+                    SliceLine.position.y -= 5;
+                    scene.add(SliceLine);
+
+                    callWorkers();
+
+                });
+                $("#LoadZ").on('click', function(){
+                    window.dimension = 'y';
+                    var slice = new THREE.Geometry();
+                    slice.vertices.push(origin);
+                    slice.vertices.push(Zmax);
+                    slice.vertices.push(YZmax);
+                    slice.vertices.push(Ymax);
+                    slice.vertices.push(origin);
+                    SliceLine = new THREE.Line(slice, sliceMaterial);
+                    SliceLine.position.x -= 5;
+                    scene.add(SliceLine);
+
+                    callWorkers();
+
+                });
+
+                var emptyGeometry = new THREE.BoxGeometry( 1, 1, 1 ); // For loading empty leaf nodes
+
+                var pointGeometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 ); // For loading point cloud as boxes
+                // var sphereGeometry = new THREE.SphereGeometry(0.1, 10, 10); // For loa as ding point cloud as spheres
+                var emptyMaterial = new THREE.MeshNormalMaterial( { transparent: true, opacity: 0.5, color: 0xffffff} );
+                var pointMaterial = new THREE.MeshBasicMaterial( {color: 0x000000, wireframe: false} );
+                var routeMaterial = new THREE.MeshBasicMaterial( {color: 0X52CC29, wireframe: true} );
+
+
+                route = new THREE.Object3D(); //create an empty container
+                // group.name = "group";
+                scene.add( route );
+
+
+                GetPath.addEventListener('message', function(e) {
+                    data = e.data;
+                    console.log(data);
+                    var mesh = new THREE.Mesh( emptyGeometry, routeMaterial );
+                    for (i = 0; i < data.length; i++){
+                        mesh.scale.x = parseFloat( data[3])*2;
+                        mesh.scale.y = parseFloat( data[3])*2;
+                        mesh.scale.z = parseFloat( data[3])*2;
+                        mesh.position.x = parseFloat( data[1]) + (parseFloat( data[3]));
+                        mesh.position.z = parseFloat( data[0]) + (parseFloat( data[3]));
+                        mesh.position.y = parseFloat( data[2]) + (parseFloat( data[3]));
+                    }
+                    mesh.matrixAutoUpdate = false;
+                    mesh.updateMatrix();
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = false;
+                    route.add( mesh );
+                });
+
+                GetEmptySpace.addEventListener('message', function(e) {
+                    data = e.data;
+                    var mesh = new THREE.Mesh( emptyGeometry, emptyMaterial );
+
+                    if (parseInt( data[3], 10) > 1) {
+                        mesh.scale.x = parseInt( data[3]);
+                        mesh.scale.y = parseInt( data[3]);
+                        mesh.scale.z = parseInt( data[3]);
+
+                        mesh.position.x = parseFloat( data[1]) + (parseFloat( data[3])/2) -0.5;
+                        mesh.position.z = parseFloat( data[0]) + (parseFloat( data[3])/2) -0.5;
+                        mesh.position.y = parseFloat( data[2]) + (parseFloat( data[3])/2) -0.5;
+                        // console.log(mesh.geometry.size)
+                    } else {
+                        mesh.position.x = parseFloat( data[1]);
+                        mesh.position.z = parseFloat( data[0]);
+                        mesh.position.y = parseFloat( data[2]);
+                    }
+                    mesh.matrixAutoUpdate = false;
+                    mesh.updateMatrix();
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = false;
+                    group.add( mesh );
+
+                }, false);
+
+                GetPointCloud.addEventListener('message', function(e) {
+                    data = e.data;
+                    var mesh = new THREE.Mesh( pointGeometry, pointMaterial );
+                    mesh.position.x = data[1]
+                    mesh.position.z = data[0]
+                    mesh.position.y = data[2]
+                    mesh.matrixAutoUpdate = false;
+                    mesh.updateMatrix();
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = false;
+                    group.add( mesh );
+
+                }, false);
+
+                GetPoints.addEventListener('message', function(e) {
+                    data = e.data;
+                    var mesh = new THREE.Mesh( pointGeometry, pointMaterial );
+                    mesh.position.x = data[1]
+                    mesh.position.z = data[0]
+                    mesh.position.y = data[2]
+                    mesh.matrixAutoUpdate = false;
+                    mesh.updateMatrix();
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = false;
+                    group.add( mesh );
+
+                }, false);
+
+                return false;
+            });
+
+
+
+
+
+
+            // Let's draw the awesomness!
+            render();
+
+
+            function render() {
+
+                var delta = clock.getDelta();
+                camControls.update(delta);
+
+
+                webGLRenderer.clear();
+                webGLRenderer.setClearColor("#7EC0EE",1);
+
+
+                // render using requestAnimationFrame
+                requestAnimationFrame(render);
+                webGLRenderer.render(scene, camera)
+            }
+
+            document.addEventListener( 'mousedown', onMouseDown, false );
+
+
+        }
+        window.onload = init;
+    </script>
+
+    <!-- jQuery -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+    <script>
+    $(document).ready(function(){
+        $('[data-toggle="popover"]').popover();
+    });
+    </script>
+</body>
+</html>
